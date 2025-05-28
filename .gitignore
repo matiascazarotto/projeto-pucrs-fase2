@@ -1,2 +1,3 @@
 node_modules
 infrastructure/.terraform
+infrastructure/.terraform.lock.hcl
