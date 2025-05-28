@@ -3,7 +3,7 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.get('/', (req, res) => {
-  res.send('Olá! Esta é uma aplicação de estudos da materia de DevOps.');
+  res.send('Olá! Esta é uma aplicação de estudos da materia de DevOps. Projeto Fase 2.');
 });
 
 app.get('/status', (req, res) => {
