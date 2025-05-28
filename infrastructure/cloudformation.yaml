@@ -1,0 +1,92 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "Instancia EC2 para a aplicacao Node.js - Projeto DevOps PUC RS"
+
+Parameters:
+  InstanceType:
+    Description: "Tipo da instancia EC2"
+    Type: "String"
+    Default: "t2.micro"
+    AllowedValues:
+      - "t2.micro"
+      - "t3.micro"
+  KeyName:
+    Description: "Nome do par de chaves EC2 para acesso SSH"
+    Type: "AWS::EC2::KeyPair::KeyName"
+    ConstraintDescription: "Deve ser o nome de um par de chaves EC2 existente."
+  SSHLocation:
+    Description: "O range de IP para acesso SSH a instancia EC2"
+    Type: "String"
+    MinLength: "9"
+    MaxLength: "18"
+    Default: "0.0.0.0/0"
+    AllowedPattern: "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})"
+    ConstraintDescription: "Deve ser um range de IP valido no formato x.x.x.x/x."
+  AppPort:
+    Description: "Porta em que a aplicacao Node.js estara rodando"
+    Type: "Number"
+    Default: 3000
+
+Resources:
+  EC2Instance:
+    Type: "AWS::EC2::Instance"
+    Properties:
+      InstanceType: !Ref InstanceType
+      KeyName: !Ref KeyName
+      ImageId: !FindInMap [AWSRegionArch2AMI, !Ref "AWS::Region", "HVM64"]
+      SecurityGroupIds:
+        - !Ref InstanceSecurityGroup
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          yum update -y
+          curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.1/install.sh | bash
+          export NVM_DIR="/home/ec2-user/.nvm"
+          [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+          [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
+          nvm install 18
+          nvm use 18
+
+  InstanceSecurityGroup:
+    Type: "AWS::EC2::SecurityGroup"
+    Properties:
+      GroupDescription: "Habilita SSH e acesso a porta da aplicacao"
+      SecurityGroupIngress:
+        - IpProtocol: "tcp"
+          FromPort: 22
+          ToPort: 22
+          CidrIp: !Ref SSHLocation
+        - IpProtocol: "tcp"
+          FromPort: !Ref AppPort
+          ToPort: !Ref AppPort
+          CidrIp: "0.0.0.0/0"
+
+Mappings:
+  AWSRegionArch2AMI: 
+    "us-east-1":      {"HVM64": "ami-0cff7528ff583bf9a"}
+    "us-east-2":      {"HVM64": "ami-024e6efaf93d85776"}
+    "us-west-1":      {"HVM64": "ami-0d9858aa3c6322f73"}
+    "us-west-2":      {"HVM64": "ami-03f65b072b16791c2"}
+    "ap-south-1":     {"HVM64": "ami-03b262af891f8cb10"}
+    "ap-northeast-2": {"HVM64": "ami-0a02032a3a4372883"}
+    "ap-southeast-1": {"HVM64": "ami-0e3c4be6785de9a7a"}
+    "ap-southeast-2": {"HVM64": "ami-080d03c9995c71011"}
+    "ap-northeast-1": {"HVM64": "ami-0bba69335379e17f8"}
+    "ca-central-1":   {"HVM64": "ami-0f85d0533f9808914"}
+    "eu-central-1":   {"HVM64": "ami-07620139298af599e"}
+    "eu-west-1":      {"HVM64": "ami-01efa4023f0f2b1c7"}
+    "eu-west-2":      {"HVM64": "ami-017a0306711533812"}
+    "eu-west-3":      {"HVM64": "ami-0a64790c004709b27"}
+    "eu-north-1":     {"HVM64": "ami-0bd99ef9eccfee250"}
+    "sa-east-1":      {"HVM64": "ami-05dfb92c97c995fb4"}
+
+Outputs:
+  InstanceId:
+    Description: "ID da instancia EC2 criada"
+    Value: !Ref EC2Instance
+  PublicDNS:
+    Description: "DNS Publico da instancia EC2 criada"
+    Value: !GetAtt [EC2Instance, PublicDnsName]
+  PublicIP:
+    Description: "IP Publico da instancia EC2 criada"
+    Value: !GetAtt [EC2Instance, PublicIp]
+
