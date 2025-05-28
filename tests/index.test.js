@@ -6,7 +6,7 @@ describe("Testes das Rotas da Aplicação Express", () => {
     it("deve retornar status 200 e a mensagem de Olá", async () => {
       const res = await request(app).get("/");
       expect(res.statusCode).toEqual(200);
-      expect(res.text).toBe("Olá! Esta é uma aplicação de estudos da materia de DevOps.");
+      expect(res.text).toBe("Olá! Esta é uma aplicação de estudos da materia de DevOps. Projeto Fase 2.");
     });
   });
 
