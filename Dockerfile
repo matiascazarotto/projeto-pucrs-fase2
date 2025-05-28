@@ -1,28 +1,27 @@
 # Estágio de build
 FROM node:18-alpine AS build
 
-# Definir diretório de trabalho
 WORKDIR /app
 
-# Copiar package.json e package-lock.json
+# Copiar apenas os arquivos de dependência
 COPY package*.json ./
 
-# Instalar dependências
+# Instalar todas as dependências (dev + prod)
 RUN npm ci
 
-# Copiar o restante dos arquivos
-COPY . .
+# Copiar somente os arquivos da aplicação e testes
+COPY src ./src
+COPY tests ./tests
 
 # Estágio de produção
 FROM node:18-alpine
 
-# Definir diretório de trabalho
 WORKDIR /app
 
-# Criar usuário não-root para segurança
+# Criar usuário não-root
 RUN addgroup -S nodeapp && adduser -S nodeapp -G nodeapp
 
-# Copiar apenas os arquivos necessários do estágio de build
+# Copiar apenas o necessário da etapa de build
 COPY --from=build /app/package*.json ./
 COPY --from=build /app/src ./src
 COPY --from=build /app/tests ./tests
@@ -30,15 +29,12 @@ COPY --from=build /app/tests ./tests
 # Instalar apenas dependências de produção
 RUN npm ci --only=production
 
-# Definir variáveis de ambiente
+# Variáveis de ambiente
 ENV NODE_ENV=production
 ENV PORT=3000
 
-# Expor a porta da aplicação
 EXPOSE 3000
 
-# Mudar para o usuário não-root
 USER nodeapp
 
-# Comando para iniciar a aplicação
 CMD ["npm", "start"]
