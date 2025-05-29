@@ -8,7 +8,9 @@ on:
 
 env:
   AWS_REGION: sa-east-1
-  ECR_REPOSITORY: devops-pucrs 
+  ECR_REPOSITORY: 661269962775.dkr.ecr.sa-east-1.amazonaws.com/devops-pucrs
+  ECS_CLUSTER_NAME: devops-pucs
+  ECS_SERVICE_NAME: svc-devops-pucrs
 
 jobs:
   build:
@@ -41,7 +43,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4 # Usar v4 para consistência
+        uses: actions/checkout@v4
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
@@ -50,7 +52,6 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
-      # Adicionadas etapas para ECR
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
@@ -71,3 +72,9 @@ jobs:
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
           echo "Image pushed: $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
           echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
+
+      - name: Update ECS Service
+        run: |
+          echo "Forcing new deployment on ECS service..."
+          aws ecs update-service --cluster ${{ env.ECS_CLUSTER_NAME }} --service ${{ env.ECS_SERVICE_NAME }} --force-new-deployment --no-cli-pager
+          echo "ECS service update initiated for cluster ${{ env.ECS_CLUSTER_NAME }} and service ${{ env.ECS_SERVICE_NAME }}."
