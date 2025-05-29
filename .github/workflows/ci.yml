@@ -8,7 +8,7 @@ on:
 
 env:
   AWS_REGION: sa-east-1
-  ECR_REPOSITORY: 661269962775.dkr.ecr.sa-east-1.amazonaws.com/devops-pucrs
+  ECR_REPOSITORY: devops-pucrs
   ECS_CLUSTER_NAME: devops-pucs
   ECS_SERVICE_NAME: svc-devops-pucrs
 
