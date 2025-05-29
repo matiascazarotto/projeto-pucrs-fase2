@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [ "main", "master" ]
 
+env:
+  AWS_REGION: sa-east-1
+  ECR_REPOSITORY: devops-pucrs 
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -31,12 +35,39 @@ jobs:
       run: npm test
     
   deploy:
+    needs: build 
     runs-on: ubuntu-latest
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master') 
+
     steps:
-      - uses: actions/checkout@v3
-      - uses: aws-actions/configure-aws-credentials@v2
+      - name: Checkout repository
+        uses: actions/checkout@v4 # Usar v4 para consistência
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: sa-east-1
-      - run: aws s3 sync ./src s3://devops-fase2-bucket --delete
+          aws-region: ${{ env.AWS_REGION }}
+
+      # Adicionadas etapas para ECR
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Build, tag, and push image to Amazon ECR
+        id: build-image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          echo "Building Docker image..."
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          echo "Tagging image as latest..."
+          docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
+          echo "Pushing image with tag $IMAGE_TAG..."
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          echo "Pushing image with tag latest..."
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+          echo "Image pushed: $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+          echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
