@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: "Instancia EC2 para a aplicacao Node.js - Projeto DevOps PUC RS"
+Description: "Instancia EC2 para a aplicacao Node.js com Alarme de CPU - Projeto DevOps PUC RS"
 
 Parameters:
   InstanceType:
@@ -25,6 +25,12 @@ Parameters:
     Description: "Porta em que a aplicacao Node.js estara rodando"
     Type: "Number"
     Default: 3000
+  NotificationEmail:
+    Description: "Email para receber notificacoes de alarme"
+    Type: "String"
+    Default: "matias.cazarotto@hotmail.com"
+    AllowedPattern: ".+@.+\\..+"
+    ConstraintDescription: "Deve ser um endereco de email valido."
 
 Resources:
   EC2Instance:
@@ -60,8 +66,37 @@ Resources:
           ToPort: !Ref AppPort
           CidrIp: "0.0.0.0/0"
 
+  # Tópico SNS para notificações
+  SNSTopic:
+    Type: "AWS::SNS::Topic"
+    Properties:
+      DisplayName: "AlarmeCPUAltaEC2"
+      Subscription:
+        - Endpoint: !Ref NotificationEmail
+          Protocol: "email"
+
+  # Alarme CloudWatch para CPU alta
+  CPUAlarm:
+    Type: "AWS::CloudWatch::Alarm"
+    Properties:
+      AlarmName: !Sub "CPUAlta-${EC2Instance.InstanceId}"
+      AlarmDescription: "Alarme disparado se a CPU exceder 80% por 10 minutos"
+      MetricName: "CPUUtilization"
+      Namespace: "AWS/EC2"
+      Statistic: "Average"
+      Period: 300 # 5 minutos
+      EvaluationPeriods: 2 # Total 10 minutos
+      Threshold: 80
+      ComparisonOperator: "GreaterThanThreshold"
+      Dimensions:
+        - Name: "InstanceId"
+          Value: !Ref EC2Instance
+      AlarmActions:
+        - !Ref SNSTopic
+      Unit: "Percent"
+
 Mappings:
-  AWSRegionArch2AMI: 
+  AWSRegionArch2AMI:
     "us-east-1":      {"HVM64": "ami-0cff7528ff583bf9a"}
     "us-east-2":      {"HVM64": "ami-024e6efaf93d85776"}
     "us-west-1":      {"HVM64": "ami-0d9858aa3c6322f73"}
@@ -89,4 +124,7 @@ Outputs:
   PublicIP:
     Description: "IP Publico da instancia EC2 criada"
     Value: !GetAtt [EC2Instance, PublicIp]
+  SNSTopicArn:
+    Description: "ARN do Topico SNS criado para notificacoes"
+    Value: !Ref SNSTopic
 
